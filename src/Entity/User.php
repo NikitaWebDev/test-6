@@ -7,6 +7,7 @@ namespace App\Entity;
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
 use DateTimeInterface;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * @ORM\Entity(repositoryClass=UserRepository::class)
@@ -28,6 +29,11 @@ class User
     private ?DateTimeInterface $updatedAt = null;
 
     /**
+     * @Assert\GreaterThanOrEqual(
+     *     value = 0,
+     *     message="Баланс не может быть меньше 0!"
+     * )
+     *
      * @ORM\Column(type="integer", options={"default" : 0})
      */
     private int $balance = 0;

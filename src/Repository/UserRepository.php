@@ -1,11 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repository;
 
 use App\Entity\User;
+use App\Exception\Entity\NotFound\UserNotFoundException;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\ORM\OptimisticLockException;
-use Doctrine\ORM\ORMException;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -21,56 +22,44 @@ class UserRepository extends ServiceEntityRepository
         parent::__construct($registry, User::class);
     }
 
-    /**
-     * @throws ORMException
-     * @throws OptimisticLockException
-     */
     public function add(User $entity, bool $flush = true): void
     {
         $this->_em->persist($entity);
+
+        if ($flush) {
+            $this->_em->flush();
+        }
+    }
+
+    public function remove(User $entity, bool $flush = true): void
+    {
+        $this->_em->remove($entity);
+
         if ($flush) {
             $this->_em->flush();
         }
     }
 
     /**
-     * @throws ORMException
-     * @throws OptimisticLockException
+     * @param int $id
+     * @param int|null $lockMode
+     * @param int|null $lockVersion
+     * @param bool $throwException
+     * @return User|null
+     * @throws UserNotFoundException
      */
-    public function remove(User $entity, bool $flush = true): void
-    {
-        $this->_em->remove($entity);
-        if ($flush) {
-            $this->_em->flush();
+    public function findById(
+        int $id,
+        ?int $lockMode = null,
+        ?int $lockVersion = null,
+        bool $throwException = true
+    ): ?User {
+        $entity = $this->find($id, $lockMode, $lockVersion);
+
+        if (is_null($entity) && $throwException) {
+            throw new UserNotFoundException($entity);
         }
-    }
 
-    // /**
-    //  * @return User[] Returns an array of User objects
-    //  */
-    /*
-    public function findByExampleField($value)
-    {
-        return $this->createQueryBuilder('u')
-            ->andWhere('u.exampleField = :val')
-            ->setParameter('val', $value)
-            ->orderBy('u.id', 'ASC')
-            ->setMaxResults(10)
-            ->getQuery()
-            ->getResult()
-        ;
+        return $entity;
     }
-    */
-
-    /*
-    public function findOneBySomeField($value): ?User
-    {
-        return $this->createQueryBuilder('u')
-            ->andWhere('u.exampleField = :val')
-            ->setParameter('val', $value)
-            ->getQuery()
-            ->getOneOrNullResult()
-        ;
-    }
-    */
 }
