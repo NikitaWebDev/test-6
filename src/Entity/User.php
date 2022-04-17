@@ -14,22 +14,13 @@ use DateTimeInterface;
  */
 class User
 {
-    /**
-     * @ORM\Id
-     * @ORM\GeneratedValue
-     * @ORM\Column(type="integer")
-     */
-    private int $id;
+    use IdTrait;
+    use CreatedAtTrait;
 
     /**
      * @ORM\Column(type="string", length=50)
      */
     private string $name;
-
-    /**
-     * @ORM\Column(type="datetime_immutable")
-     */
-    private DateTimeInterface $createdAt;
 
     /**
      * @ORM\Column(type="datetime_immutable", nullable=true)
@@ -41,9 +32,9 @@ class User
      */
     private int $balance = 0;
 
-    public function getId(): ?int
+    public static function create(string $name, int $balance = 0): self
     {
-        return $this->id;
+        return (new static())->setName($name)->setBalance($balance);
     }
 
     public function getName(): ?string
@@ -54,18 +45,6 @@ class User
     public function setName(string $name): self
     {
         $this->name = $name;
-
-        return $this;
-    }
-
-    public function getCreatedAt(): ?DateTimeInterface
-    {
-        return $this->createdAt;
-    }
-
-    public function setCreatedAt(DateTimeInterface $createdAt): self
-    {
-        $this->createdAt = $createdAt;
 
         return $this;
     }
@@ -82,15 +61,15 @@ class User
         return $this;
     }
 
+    public function getBalance(): int
+    {
+        return $this->balance;
+    }
+
     public function setBalance(int $balance): self
     {
         $this->balance = $balance;
 
         return $this;
-    }
-
-    public function getBalance(): int
-    {
-        return $this->balance;
     }
 }
