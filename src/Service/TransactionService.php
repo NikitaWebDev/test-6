@@ -31,42 +31,55 @@ class TransactionService
      * @return Transaction
      * @throws \App\Exception\Entity\NotFound\UserNotFoundException
      * @throws \LogicException
+     * @throws \Doctrine\DBAL\Exception
+     * @throws \Throwable
      */
     public function create(
         int $senderUserId,
         int $recipientUserId,
         int $sum
     ): Transaction {
-        // получаем пользователей
-        $senderUser = $this->userRepository->findById(
-            $senderUserId,
-            LockMode::PESSIMISTIC_WRITE
-        );
-        $recipientUser = $this->userRepository->findById(
-            $recipientUserId,
-            LockMode::PESSIMISTIC_WRITE
-        );
+        $connection = $this->em->getConnection();
 
-        // вычисляем баланс отправителя
-        $balanceSenderUser = $senderUser->getBalance();
-        if ($sum > $balanceSenderUser) {
-            throw new \LogicException('Недостаточно средств на счете!');
+        try {
+            $connection->beginTransaction();
+
+            // получаем пользователей
+            $senderUser = $this->userRepository->findById(
+                $senderUserId,
+                LockMode::PESSIMISTIC_WRITE
+            );
+            $recipientUser = $this->userRepository->findById(
+                $recipientUserId,
+                LockMode::PESSIMISTIC_WRITE
+            );
+
+            // вычисляем баланс отправителя
+            $balanceSenderUser = $senderUser->getBalance();
+            if ($sum > $balanceSenderUser) {
+                throw new \LogicException('Недостаточно средств на счете!');
+            }
+            $balanceSenderUser -= $sum;
+            $senderUser->setBalance($balanceSenderUser);
+            $this->em->persist($senderUser);
+
+            // вычисляем баланс получателя
+            $balanceRecipientUser = $recipientUser->getBalance() + $sum;
+            $recipientUser->setBalance($balanceRecipientUser);
+            $this->em->persist($recipientUser);
+
+            // создаем транзакцию
+            $transaction = Transaction::create($senderUser, $recipientUser, $sum);
+            $this->em->persist($transaction);
+
+            // выполняем операцию
+            $this->em->flush();
+            $connection->commit();
+        } catch (\Throwable $exception) {
+            $connection->rollBack();
+
+            throw $exception;
         }
-        $balanceSenderUser -= $sum;
-        $senderUser->setBalance($balanceSenderUser);
-        $this->em->persist($senderUser);
-
-        // вычисляем баланс получателя
-        $balanceRecipientUser = $recipientUser->getBalance() + $sum;
-        $recipientUser->setBalance($balanceRecipientUser);
-        $this->em->persist($recipientUser);
-
-        // создаем транзакцию
-        $transaction = Transaction::create($senderUser, $recipientUser, $sum);
-        $this->em->persist($transaction);
-
-        // выполняем операцию
-        $this->em->flush();
 
         return $transaction;
     }

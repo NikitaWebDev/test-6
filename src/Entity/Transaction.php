@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\TransactionRepository;
+use DateTimeInterface;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
@@ -33,12 +34,18 @@ class Transaction
     public static function create(
         User $senderUser,
         User $recipientUser,
-        int $sum
+        int $sum,
+        ?DateTimeInterface $createdAt = null
     ): self {
+        if (\is_null($createdAt)) {
+            $createdAt = \DateTimeImmutable::createFromFormat('', '');
+        }
+
         return (new static())
             ->setSenderUser($senderUser)
             ->setRecipientUser($recipientUser)
             ->setSum($sum)
+            ->setCreatedAt($createdAt)
         ;
     }
 

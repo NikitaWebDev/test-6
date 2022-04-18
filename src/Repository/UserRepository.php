@@ -62,4 +62,9 @@ class UserRepository extends ServiceEntityRepository
 
         return $entity;
     }
+
+    public function findOneByName(string $name): ?User
+    {
+        return $this->findOneBy(['name' => $name]);
+    }
 }
