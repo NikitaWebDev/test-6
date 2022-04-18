@@ -39,10 +39,8 @@ class TransactionService
         int $recipientUserId,
         int $sum
     ): Transaction {
-        $connection = $this->em->getConnection();
-
         try {
-            $connection->beginTransaction();
+            $this->em->beginTransaction();
 
             // получаем пользователей
             $senderUser = $this->userRepository->findById(
@@ -74,9 +72,9 @@ class TransactionService
 
             // выполняем операцию
             $this->em->flush();
-            $connection->commit();
+            $this->em->commit();
         } catch (\Throwable $exception) {
-            $connection->rollBack();
+            $this->em->rollBack();
 
             throw $exception;
         }
