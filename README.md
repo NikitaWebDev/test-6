@@ -13,8 +13,9 @@
 ## Локальный деплой проекта
 
 1. Если не установлен Docker Compose, то [установите его](https://docs.docker.com/compose/install/).
-2. `cp docker-compose.override.yml.example docker-compose.override.yml`
-3. `cp .env.example .env`
-4. `docker-compose build --pull --no-cache`
-5. `docker-compose up -d`
-6. Чтобы остановить, выполните `docker-compose down --remove-orphans`.
+2. `git clone git@github.com:NikitaWebDev/test-6.git`
+3. `cp docker-compose.override.yml.example docker-compose.override.yml`
+4. `cp .env.example .env`
+5. `docker-compose build --pull --no-cache`
+6. `docker-compose up -d`
+7. Чтобы остановить, выполните `docker-compose down --remove-orphans`.

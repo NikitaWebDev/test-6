@@ -38,9 +38,19 @@ class User
      */
     private int $balance = 0;
 
-    public static function create(string $name, int $balance = 0): self
-    {
-        return (new static())->setName($name)->setBalance($balance);
+    public static function create(
+        string $name,
+        int $balance = 0,
+        ?DateTimeInterface $createdAt = null
+    ): self {
+        if (\is_null($createdAt)) {
+            $createdAt = \DateTimeImmutable::createFromFormat('', '');
+        }
+
+        return (new static())
+            ->setName($name)
+            ->setBalance($balance)
+            ->setCreatedAt($createdAt);
     }
 
     public function getName(): ?string
