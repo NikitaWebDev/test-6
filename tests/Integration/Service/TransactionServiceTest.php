@@ -87,18 +87,18 @@ class TransactionServiceTest extends KernelTestCase
         self::bootKernel();
 
         $senderUser = $this->getSenderUser();
-        $senderUserId = $senderUser->getId();
+        $expectedBalanceSenderUser = $senderUser->getBalance();
 
         $recipientUser = $this->getRecipientUser();
-        $recipientUserId = $recipientUser->getId();
+        $expectedBalanceRecipientUser = $recipientUser->getBalance();
 
         $sum = $senderUser->getBalance() + 100;
 
         // Execute
         try {
             $this->transactionService->create(
-                $senderUserId,
-                $recipientUserId,
+                $senderUser->getId(),
+                $recipientUser->getId(),
                 $sum
             );
         } catch (\Throwable $exception) {
@@ -106,6 +106,18 @@ class TransactionServiceTest extends KernelTestCase
             static::assertSame(
                 'Недостаточно средств на счете!',
                 $exception->getMessage()
+            );
+
+            $senderUser = $this->getSenderUser();
+            static::assertSame(
+                $expectedBalanceSenderUser,
+                $senderUser->getBalance()
+            );
+
+            $recipientUser = $this->getRecipientUser();
+            static::assertSame(
+                $expectedBalanceRecipientUser,
+                $recipientUser->getBalance()
             );
         }
     }
