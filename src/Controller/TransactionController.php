@@ -9,9 +9,20 @@ use App\Service\TransactionService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{JsonResponse, Request};
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Validator\{Validation, ConstraintViolationInterface, ConstraintViolationListInterface};
+use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Component\Validator\Constraints\{NotBlank, Type, GreaterThan};
 
 class TransactionController extends AbstractController
 {
+    private array $validateErrors = ['errors' => []];
+    private ValidatorInterface $validator;
+
+    public function __construct()
+    {
+        $this->validator = Validation::createValidator();
+    }
+
     /**
      * Принимает POST-параметры: int senderUserId, int recipientUserId, int sum.
      *
@@ -21,26 +32,17 @@ class TransactionController extends AbstractController
         Request $request,
         TransactionService $transactionService
     ): JsonResponse {
-        $senderUserId = $request->get('senderUserId');
-        try {
-            $senderUserId = $this->prepareUserId($senderUserId, 'sender');
-        } catch (\Exception $exception) {
-            return $this->handleException($exception);
+        $this->validate($request);
+        if (!\empty($this->validateErrors['errors'])) {
+            return $this->json(
+                $this->validateErrors,
+                JsonResponse::HTTP_BAD_REQUEST
+            );
         }
 
-        $recipientUserId = $request->get('recipientUserId');
-        try {
-            $recipientUserId = $this->prepareUserId($recipientUserId, 'recipient');
-        } catch (\Exception $exception) {
-            return $this->handleException($exception);
-        }
-
-        $sum = $request->get('sum');
-        try {
-            $sum = $this->prepareSum($sum);
-        } catch (\Exception $exception) {
-            return $this->handleException($exception);
-        }
+        $senderUserId = (int) $request->get('senderUserId');
+        $recipientUserId = (int) $request->get('recipientUserId');
+        $sum = (int) $request->get('sum');
 
         try {
             $transaction = $transactionService->create(
@@ -67,74 +69,42 @@ class TransactionController extends AbstractController
         ], JsonResponse::HTTP_CREATED);
     }
 
-    /**
-     * @param mixed $userId
-     * @param string $type sender/recipient
-     * @return int
-     * @throws \UnexpectedValueException
-     * @throws \InvalidArgumentException
-     */
-    private function prepareUserId($userId, string $type): int
+    private function validate(Request $request): void
     {
-        switch ($type) {
-            case 'sender':
-                $displayType = 'отправителя';
-                break;
-            case 'recipient':
-                $displayType = 'получателя';
-                break;
-            default:
-                throw new \UnexpectedValueException('Неправильный параметр type!', 500);
-        }
-
-        if (\is_null($userId)) {
-            throw new \InvalidArgumentException("Не указан ID $displayType!");
-        }
-        if (!\is_numeric($userId)) {
-            throw new \InvalidArgumentException("Указан некорректный ID $displayType!");
-        }
-
-        $userId = (int) $userId;
-        if ($userId <= 0) {
-            throw new \UnexpectedValueException("Указан некорректный ID $displayType!");
-        }
-
-        return $userId;
+        $this->validateValue($request->get('senderUserId'));
+        $this->validateValue($request->get('recipientUserId'));
+        $this->validateValue($request->get('sum'));
     }
 
     /**
-     * @param mixed $sum
-     * @return int
-     * @throws \UnexpectedValueException
-     * @throws \InvalidArgumentException
+     * @param mixed $value
+     * @return void
      */
-    private function prepareSum($sum): int
+    private function validateValue($value): void
     {
-        if (\is_null($sum)) {
-            throw new \InvalidArgumentException('Не указана сумма!');
-        }
-        if (!\is_numeric($sum)) {
-            throw new \InvalidArgumentException('Указана некорректная сумма!');
-        }
-
-        $sum = (int) $sum;
-        if ($sum <= 0) {
-            throw new \UnexpectedValueException('Указана некорректная сумма!');
-        }
-
-        return $sum;
+        $violations = $this->validator->validate($value, [
+            new NotBlank(),
+            new Type('numeric'),
+            new GreaterThan(0),
+        ]);
+        $this->handleViolations($violations);
     }
 
-    private function handleException(\Exception $exception): JsonResponse
+    private function handleViolations(ConstraintViolationListInterface $violations): void
     {
-        if ($code = $exception->getCode()) {
-            return $this->json([
-                'message' => $exception->getMessage(),
-            ], $code);
+        if (0 === count($violations)) {
+            return;
         }
 
-        return $this->json([
-            'message' => $exception->getMessage(),
-        ], JsonResponse::HTTP_BAD_REQUEST);
+        foreach ($violations as $violation) {
+            /** @var ConstraintViolationInterface $violation */
+            $this->validateErrors['errors'][] = [
+                'status' => JsonResponse::HTTP_BAD_REQUEST,
+                'title' => $violation->getMessage(),
+                'source' => [
+                    'pointer' => "/data/attributes/{$violation->getPropertyPath()}",
+                ],
+            ];
+        }
     }
 }
